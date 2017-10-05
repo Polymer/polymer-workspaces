@@ -12,7 +12,8 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
-import * as GitHub from 'github';
+import * as GitHubApi from 'github';
+import {githubApiLimitter} from './util/rate-limiter';
 
 /**
  * A reference to a GitHub repo, with an optional reference to a specific ref
@@ -123,6 +124,45 @@ function createGithubRepoReferenceFromPattern(pattern: string):
 }
 
 /**
+ * Validate that a GitHub repo is a valid match for a pattern. Async because it
+ * may need to check if the pattern's ref (if given) exists on GitHub.
+ */
+async function validateGitHubRepoForPattern(
+    pattern: string, repoData: GitHubRepoData, github: GitHubApi):
+    Promise<false|GitHubRepoReference> {
+  const namePattern = pattern.substring(0, pattern.indexOf('*')).toLowerCase();
+  const ref =
+      pattern.includes('#') && pattern.substring(pattern.indexOf('#') + 1);
+  // If the repo's fullName doesn't match the pattern prefix, ignore it.
+  if (!repoData.fullName.toLowerCase().startsWith(namePattern)) {
+    return false;
+  }
+  // If the pattern included a ref that the repo doesn't have, ignore it.
+  if (ref && ref !== repoData.defaultBranch) {
+    try {
+      const response = await github.gitdata.getReference({
+        owner: repoData.owner,
+        repo: repoData.name,
+        ref: 'heads/' + ref,
+      });
+      // GitHub API peculiarity: if ref isn't an exact match, GitHub switches
+      // behavior and returns all references that have `ref` as a prefix. Since
+      // we only want exact matches, add an extra check that the API did not
+      // return an array.
+      if (!isSuccessResponse(response) || Array.isArray(response.data)) {
+        return false;
+      }
+    } catch (err) {
+      return false;
+    }
+  }
+  // Otherwise, it's a match! Add it to allGitHubRepos to be returned.
+  return createGitHubRepoReferenceFromDataAndReference(
+      repoData, ref || repoData.defaultBranch);
+}
+
+
+/**
  * GitHubConnection is a wrapper class for the GitHub npm package that
  * assumes action as-a-user, and a minimal set of supported API calls (mostly
  * to do with listing and cloning owned repos) using a token and building in
@@ -134,11 +174,11 @@ function createGithubRepoReferenceFromPattern(pattern: string):
  */
 export class GitHubConnection {
   private _cache: Map<string, GitHubRepoData>;
-  private _github: GitHub;
+  private _github: GitHubApi;
 
   constructor(token: string) {
     this.resetCache();
-    this._github = new GitHub({protocol: 'https'});
+    this._github = new GitHubApi({protocol: 'https'});
     this._github.authenticate({type: 'oauth', token: token});
   }
 
@@ -262,47 +302,21 @@ export class GitHubConnection {
       return allGitHubRepos;
     }
 
-    await Promise.all([...ownersToLookup].map((pattern): Promise<void> => {
-      return (async () => {
-        const owner = pattern.substring(0, pattern.indexOf('/')).toLowerCase();
-        const namePattern =
-            pattern.substring(0, pattern.indexOf('*')).toLowerCase();
-        const ref = pattern.includes('#') &&
-            pattern.substring(pattern.indexOf('#') + 1);
-        const allOwnerRepos = await this.getOwnerRepos(owner);
-        // Filter all of this owner's repos for possible matches:
-        for (const possibleMatch of allOwnerRepos) {
-          // If the repo's fullName doesn't match the pattern prefix, ignore it.
-          if (!possibleMatch.fullName.toLowerCase().startsWith(namePattern)) {
-            continue;
-          }
-          // If a branch was defined after the wildcard but this repo doesn't
-          // have a ref with that name, ignore it.
-          if (ref && ref !== possibleMatch.defaultBranch) {
-            try {
-              const response = await this._github.gitdata.getReference({
-                owner: possibleMatch.owner,
-                repo: possibleMatch.name,
-                ref: 'heads/' + ref,
-              });
-              // GitHub API peculiarity: if ref isn't an exact match, GitHub
-              // switches behavior and returns all references that have `ref` as
-              // a prefix. Since we only want exact matches, add an extra check
-              // that the API did not return an array.
-              if (!isSuccessResponse(response) ||
-                  Array.isArray(response.data)) {
-                continue;
-              }
-            } catch (err) {
-              continue;
-            }
-          }
-          // Otherwise, it's a match! Add it to allGitHubRepos to be returned.
-          allGitHubRepos.push(createGitHubRepoReferenceFromDataAndReference(
-              possibleMatch, ref || possibleMatch.defaultBranch));
-        }
-      })();
-    }));
+    for (const pattern of ownersToLookup) {
+      const owner = pattern.substring(0, pattern.indexOf('/')).toLowerCase();
+      const allOwnerRepos = await this.getOwnerRepos(owner);
+
+      const validatedRepos =
+          await Promise.all(allOwnerRepos.map((possibleMatch) => {
+            return githubApiLimitter.schedule(
+                validateGitHubRepoForPattern,
+                pattern,
+                possibleMatch,
+                this._github);
+          }));
+      allGitHubRepos.push(
+          ...(validatedRepos.filter(Boolean)) as GitHubRepoReference[]);
+    }
 
     return allGitHubRepos;
   }

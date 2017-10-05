@@ -21,6 +21,7 @@ import {GitHubConnection, GitHubRepo, GitHubRepoReference} from './github';
 import {mergedBowerConfigsFromRepos} from './util/bower';
 import exec, {checkCommand} from './util/exec';
 import {existsSync} from './util/fs';
+import {localGitLimitter} from './util/rate-limiter';
 
 import _rimraf = require('rimraf');
 const rimraf: (dir: string) => void = util.promisify(_rimraf);
@@ -43,6 +44,22 @@ export interface WorkspaceRepo {
 export interface WorkspaceInitOptions {
   fresh?: boolean;
   verbose?: boolean;
+}
+
+/**
+ * Either clone the given WorkspaceRepo or fetch/update an existing local git
+ * repo, checking out the specific repo refs.
+ * TODO(fks) 09-25-2017: Better error handling. Standardize/format errors
+ * so that single type of error thrown.
+ */
+async function cloneOrUpdateWorkspaceRepo(repo: WorkspaceRepo) {
+  if (repo.git.isGit()) {
+    await repo.git.fetch();
+    await repo.git.destroyAllUncommittedChangesAndFiles();
+  } else {
+    await repo.git.clone(repo.github.cloneUrl);
+  }
+  await repo.git.checkout(repo.github.ref || repo.github.defaultBranch);
 }
 
 export class Workspace {
@@ -147,15 +164,9 @@ export class Workspace {
    * so that single type of error thrown.
    */
   private async _cloneOrUpdateWorkspaceRepos(repos: WorkspaceRepo[]) {
-    for (const repo of repos) {
-      if (repo.git.isGit()) {
-        await repo.git.fetch();
-        await repo.git.destroyAllUncommittedChangesAndFiles();
-      } else {
-        await repo.git.clone(repo.github.cloneUrl);
-      }
-      await repo.git.checkout(repo.github.ref || repo.github.defaultBranch);
-    }
+    await Promise.all(repos.map((repo) => {
+      return localGitLimitter.schedule(cloneOrUpdateWorkspaceRepo, repo);
+    }));
   }
 
   /**
