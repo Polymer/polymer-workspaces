@@ -19,7 +19,7 @@ import Bottleneck from 'bottleneck';
  * about spamming a batch of requests through GitHub, execute them via
  * `githubApiLimiter.schedule()`.
  */
-export const githubApiLimitter = new Bottleneck(8);
+export const githubApiLimitter = new Bottleneck(12);
 
 /**
  * A local rate-limitter optimized for cloning/updating local git repos.
