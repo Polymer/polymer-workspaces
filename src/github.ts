@@ -189,7 +189,7 @@ export class GitHubConnection {
     const allRepos: GitHubRepoData[] = [];
     let pageRepos: GitHubRepoData[] = [];
     const pageSize = 50;
-    let page = 0;
+    let page = 1;
     let isOrg = true;
 
     do {
@@ -216,6 +216,7 @@ export class GitHubConnection {
       }
       pageRepos = responseData.filter((obj: any) => !obj.private)
                       .map(createGitHubRepoDataFromApi);
+
       for (const repo of pageRepos) {
         this.setCache(repo.fullName, repo);
         allRepos.push(repo);

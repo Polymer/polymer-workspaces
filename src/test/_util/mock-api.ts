@@ -35,7 +35,7 @@ export function setup() {
   nock('https://api.github.com')
       .persist()
       .get('/orgs/polymerelements/repos')
-      .query({page: 0, per_page: 50, access_token: testApiToken})
+      .query({page: 1, per_page: 50, access_token: testApiToken})
       .reply(
           200,
           [
