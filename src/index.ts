@@ -17,3 +17,6 @@ export {Workspace, WorkspaceRepo} from './workspace';
 
 /** Expose all operations. */
 export * from './workspace-ops';
+
+/** Expose command operations. */
+export * from './util/exec';
