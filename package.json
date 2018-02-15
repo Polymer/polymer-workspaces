@@ -8,11 +8,12 @@
   "author": "The Polymer Project Authors",
   "license": "BSD-3-Clause",
   "scripts": {
-    "format": "find src | grep '\\.js$\\|\\.ts$' | xargs clang-format --style=file -i",
+    "format": "find src | grep \"\\.js$\\|\\.ts$\" | xargs clang-format --style=file -i",
     "lint": "tslint -p ./",
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "test": "npm run build && mocha"
+    "test": "npm run build && mocha",
+    "test:watch": "tsc-then -- mocha"
   },
   "devDependencies": {
     "@types/chai": "^4.0.4",
@@ -23,6 +24,7 @@
     "clang-format": "^1.0.55",
     "mocha": "^3.5.3",
     "nock": "^9.0.18",
+    "tsc-then": "^1.1.0",
     "tslint": "^5.7.0",
     "typescript": "^2.5.2"
   },

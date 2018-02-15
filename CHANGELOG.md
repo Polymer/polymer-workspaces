@@ -3,6 +3,8 @@
 ## Unreleased
 <!-- Add new, unreleased items here. -->
 - Use Github API Pagination to traverse pages
+- Use `shell: true` on exec to resolve windows issues
+- Add Travis and Windows integration
 
 ## v2.1.0 [01-10-2018]
 - Made `Workspace.determineGitHubRepos()` method public.

@@ -13,6 +13,7 @@
  */
 
 import {assert} from 'chai';
+import * as path from 'path';
 import exec, {checkCommand} from '../../util/exec';
 
 suite('src/util/exec', () => {
@@ -20,6 +21,13 @@ suite('src/util/exec', () => {
     test('returns false if current directory does not exist', async () => {
       const testCwd = process.cwd();
       const result = await exec(testCwd, 'pwd');
+
+      // Handle windows difference on paths
+      const pathPieces = result.stdout.split(/\/([a-z])\//);
+      if (pathPieces.length > 1) {
+        result.stdout =
+            path.resolve(result.stdout).replace(`${pathPieces[1]}\\`, '');
+      }
       assert.deepEqual(result, {stdout: testCwd, stderr: ''});
     });
 

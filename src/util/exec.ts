@@ -29,7 +29,7 @@ export interface ExecResult {
 export default async function exec(
     cwd: string, command: string, args?: string[], options?: ExecOptions):
     Promise<ExecResult> {
-  const commandOptions = {shell: 'true', ...options, cwd: cwd} as ExecOptions;
+  const commandOptions = {shell: true, ...options, cwd: cwd} as ExecOptions;
   try {
     const {stdout, stderr} = await execFile(command, args, commandOptions);
     // Trim unneccesary extra newlines/whitespace from exec/execFile output
@@ -49,7 +49,7 @@ export async function checkCommand(commandName: string): Promise<boolean> {
   try {
     // the "command" command will exit with an error code, which Node
     // will throw from execFile() as an error object.
-    await execFile('command', ['-v', commandName], {shell: 'true'});
+    await execFile('which', [commandName], {shell: true});
     return true;
   } catch (err) {
     return false;
