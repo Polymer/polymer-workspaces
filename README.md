@@ -1,5 +1,8 @@
 # polymer-workspaces
 
+[![Build Status](https://travis-ci.com/Polymer/polymer-workspaces.svg?token=x6MxFyUe7PYM8oPW9m6b&branch=master)](https://travis-ci.org/Polymer/polymer-workspaces)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/koepsxxwhl6reof8/branch/master?svg=true)](https://ci.appveyor.com/project/FredKSchott/polymer-workspaces/branch/master)
+
 Perform work across multiple GitHub repos. Useful for both simple and complex changes across multiple Polymer elements, tools, and/or libraries.
 
 ```
