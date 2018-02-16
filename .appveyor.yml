@@ -9,6 +9,8 @@ environment:
 # Force CRLF line-endings
 init:
   - git config --global core.autocrlf true
+  - git config --global user.name "Polymer Workspaces"
+  - git config --global user.email "workspaces@polymer.com"
 
 # Don't actually build.
 build: off
@@ -19,6 +21,8 @@ install:
   - ps: Install-Product node $env:nodejs_version
   # Get latest npm
   - npm install -g npm
+  # Install Bower
+  - npm install -g bower
   # install modules. Use --force to workaround permissions issues on Windows
   - npm install --force
 
